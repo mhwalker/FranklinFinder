@@ -9,12 +9,14 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from werkzeug import secure_filename
 import hashlib
 import helpers
+from shutil import copyfile
 
 # Initialize the Flask application
 #app = Flask(__name__)
 
 # This is the path to the upload directory
 app.config['UPLOAD_FOLDER'] = '/data/www/franklinfinder/flaskexample/uploads/'
+app.config['PETFINDER_FOLDER'] = '/data/www/franklinfinder/flaskexample/petfinderImages/'
 # These are the extension that we are accepting to be uploaded
 app.config['ALLOWED_EXTENSIONS'] = set([ 'pdf', 'png', 'jpg', 'jpeg', 'gif','JPG'])
 
@@ -36,28 +38,54 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload():
     # Get the name of the uploaded file
-    file = request.files['file']
+    file1 = request.files['file']
     # Check if the file is one of the allowed types/extensions
-    print file.filename
-    if file and allowed_file(file.filename):
+    print file1.filename
+    if file1 and allowed_file(file1.filename):
         # Make the filename safe, remove unsupported chars
-        filename = secure_filename(file.filename)
+        print type(file1)
+        filename = secure_filename(file1.filename)
         fileext = filename.rsplit('.', 1)[1]
         m = hashlib.md5()
         m.update(filename+str(request.remote_addr))
         filehash = m.hexdigest()
-        print filename,fileext,filehash
-
+        tmpfilename = os.path.join(app.config['UPLOAD_FOLDER'], filehash+"."+fileext)
         # Move the file form the temporal folder to
         # the upload folder we setup
 	#print os.getcwd()
 	#print os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filehash+"."+fileext))
-        showFileName = helpers.processImage(app.config['UPLOAD_FOLDER'],filehash+"."+fileext)
+        file1.save(tmpfilename)
+        m2 = hashlib.md5(open(tmpfilename, 'rb').read())
+        hash2 = m2.hexdigest()
+        ofname = hash2+"."+fileext
+        copyfile(tmpfilename,os.path.join(app.config['UPLOAD_FOLDER'], ofname))
+        showFileName,idsToShow,dogData = helpers.processImage(app.config['UPLOAD_FOLDER'],ofname)
+        if len(idsToShow) == 0: print showFileName,idsToShow,dogData
         # Redirect the user to the uploaded_file route, which
         # will basicaly show on the browser the uploaded file
+        if len(idsToShow) == 0:
+            problem = "Sorry, we couldn\'t find a dog in your image."
+            if showFileName != "":
+                problem += "\nMaybe you are looking for a "+showFileName+"?"
+            return render_template('problem.html',
+                                   problem = problem,
+                                   image = url_for('uploaded_file',filename=dogData)
+            )
+        basePetFinder="https://www.petfinder.com/petdetail/"
         return render_template('result.html',
-                               bounded_filename = url_for('uploaded_file', filename=showFileName)
+                               bounded_filename = url_for('uploaded_file', filename=showFileName),
+                               pf_img0 = url_for('petfinder_image',filename=idsToShow[0]+"_1.jpg"),
+                               pf_img1 = url_for('petfinder_image',filename=idsToShow[1]+"_1.jpg"),
+                               pf_img2 = url_for('petfinder_image',filename=idsToShow[2]+"_1.jpg"),
+                               pf_href0 = basePetFinder+str(idsToShow[0]),
+                               pf_href1 = basePetFinder+str(idsToShow[1]),
+                               pf_href2 = basePetFinder+str(idsToShow[2]),
+                               pf_name0 = dogData[0]["name"],
+                               pf_name1 = dogData[1]["name"],
+                               pf_name2 = dogData[2]["name"],
+                               pf_desc0 = dogData[0]["desc"],
+                               pf_desc1 = dogData[1]["desc"],
+                               pf_desc2 = dogData[2]["desc"],
         )
         #return redirect(url_for('uploaded_file', filename=showFileName))
 
@@ -71,4 +99,6 @@ def uploaded_file(filename):
 #    return render_template('result.html',
 #                           bounded_filename = "uploads/"+filename
 #    )
-
+@app.route('/petfinderImages/<filename>')
+def petfinder_image(filename):
+    return send_from_directory(app.config['PETFINDER_FOLDER'],filename)
