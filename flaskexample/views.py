@@ -34,6 +34,38 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/demo', methods=['POST'])
+def demo():
+        showFileName,idsToShow,dogData = helpers.processImage(app.config['UPLOAD_FOLDER'],'9e4a9ea04b896088eb32dfa77c25cf89.jpg')
+        if len(idsToShow) == 0: print showFileName,idsToShow,dogData
+        # Redirect the user to the uploaded_file route, which                                                                                                                                                
+        # will basicaly show on the browser the uploaded file                                                                                                                                                
+        if len(idsToShow) == 0:
+            problem = "Sorry, we couldn\'t find a dog in your image."
+            if showFileName != "":
+                problem += "\nMaybe you are looking for a "+showFileName+"?"
+            return render_template('problem.html',
+                                   problem = problem,
+                                   image = url_for('uploaded_file',filename=dogData)
+            )
+        basePetFinder="https://www.petfinder.com/petdetail/"
+        return render_template('result.html',
+                               bounded_filename = url_for('uploaded_file', filename=showFileName),
+                               pf_img0 = url_for('petfinder_image',filename=idsToShow[0]+"_1.jpg"),
+                               pf_img1 = url_for('petfinder_image',filename=idsToShow[1]+"_1.jpg"),
+                               pf_img2 = url_for('petfinder_image',filename=idsToShow[2]+"_1.jpg"),
+                               pf_href0 = basePetFinder+str(idsToShow[0]),
+                               pf_href1 = basePetFinder+str(idsToShow[1]),
+                               pf_href2 = basePetFinder+str(idsToShow[2]),
+                               pf_name0 = dogData[0]["name"],
+                               pf_name1 = dogData[1]["name"],
+                               pf_name2 = dogData[2]["name"],
+                               pf_desc0 = dogData[0]["desc"],
+                               pf_desc1 = dogData[1]["desc"],
+                               pf_desc2 = dogData[2]["desc"],
+        )
+
+
 # Route that will process the file upload
 @app.route('/upload', methods=['POST'])
 def upload():
