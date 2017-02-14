@@ -17,6 +17,7 @@ from shutil import copyfile
 # This is the path to the upload directory
 app.config['UPLOAD_FOLDER'] = '/data/www/franklinfinder/flaskexample/uploads/'
 app.config['PETFINDER_FOLDER'] = '/data/www/franklinfinder/flaskexample/petfinderImages/'
+app.config['TALK_FOLDER'] = '/data/www/franklinfinder/flaskexample/static/slides/'
 # These are the extension that we are accepting to be uploaded
 app.config['ALLOWED_EXTENSIONS'] = set([ 'pdf', 'png', 'jpg', 'jpeg', 'gif','JPG'])
 
@@ -134,3 +135,7 @@ def uploaded_file(filename):
 @app.route('/petfinderImages/<filename>')
 def petfinder_image(filename):
     return send_from_directory(app.config['PETFINDER_FOLDER'],filename)
+
+@app.route('/slides')
+def getslides(filename="talk.pdf"):
+    return send_from_directory(app.config['TALK_FOLDER'],filename)
